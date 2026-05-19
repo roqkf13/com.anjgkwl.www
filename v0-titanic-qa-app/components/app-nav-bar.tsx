@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogIn } from "lucide-react";
+import { LogIn, UserPlus } from "lucide-react";
 
 export function AppNavBar() {
   return (
@@ -18,14 +18,20 @@ export function AppNavBar() {
           >
             [타이타닉]
           </Link>
-          <button
-            type="button"
-            aria-label="로그인"
+          <Link
+            href="/login"
             className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
           >
             <LogIn size={16} aria-hidden="true" />
             로그인
-          </button>
+          </Link>
+          <Link
+            href="/signup"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+          >
+            <UserPlus size={16} aria-hidden="true" />
+            회원가입
+          </Link>
         </div>
       </div>
     </nav>
