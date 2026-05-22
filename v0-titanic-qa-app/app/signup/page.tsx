@@ -11,38 +11,54 @@ import { Label } from "@/components/ui/label";
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
+type SignupUiState = {
+  error: string | null;
+  success: boolean;
+  submitting: boolean;
+};
+
+const initialUiState: SignupUiState = {
+  error: null,
+  success: false,
+  submitting: false,
+};
+
 export default function SignupPage() {
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [ui, setUi] = useState<SignupUiState>(initialUiState);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(false);
+    const formData = new FormData(e.currentTarget);
+    const formProps = Object.fromEntries(formData.entries()) as Record<
+      string,
+      string
+    >;
 
-    const form = e.currentTarget;
-    const data = new FormData(form);
-    const name = String(data.get("name") ?? "").trim();
-    const email = String(data.get("email") ?? "").trim();
-    const password = String(data.get("password") ?? "");
-    const passwordConfirm = String(data.get("passwordConfirm") ?? "");
-    const role = String(data.get("role") ?? "user");
+    const name = (formProps.name ?? "").trim();
+    const email = (formProps.email ?? "").trim();
+    const password = formProps.password ?? "";
+    const passwordConfirm = formProps.passwordConfirm ?? "";
+    const role = formProps.role ?? "user";
+
+    setUi({ error: null, success: false, submitting: false });
 
     if (!name || !email || !password) {
-      setError("모든 항목을 입력해 주세요.");
+      setUi((prev) => ({ ...prev, error: "모든 항목을 입력해 주세요." }));
       return;
     }
     if (password.length < 8) {
-      setError("비밀번호는 8자 이상이어야 합니다.");
+      setUi((prev) => ({
+        ...prev,
+        error: "비밀번호는 8자 이상이어야 합니다.",
+      }));
       return;
     }
     if (password !== passwordConfirm) {
-      setError("비밀번호가 일치하지 않습니다.");
+      setUi((prev) => ({ ...prev, error: "비밀번호가 일치하지 않습니다." }));
       return;
     }
 
-    setSubmitting(true);
+    setUi((prev) => ({ ...prev, submitting: true }));
     try {
       const res = await fetch(`${apiBaseUrl}/signup`, {
         method: "POST",
@@ -57,22 +73,23 @@ export default function SignupPage() {
 
       if (!res.ok) {
         const detail = payload.detail;
-        if (typeof detail === "string") {
-          setError(detail);
-        } else {
-          setError(`요청 실패 (HTTP ${res.status})`);
-        }
+        const errorMessage =
+          typeof detail === "string"
+            ? detail
+            : `요청 실패 (HTTP ${res.status})`;
+        setUi((prev) => ({ ...prev, error: errorMessage }));
         return;
       }
 
-      setSuccess(true);
-      form.reset();
+      setUi((prev) => ({ ...prev, success: true }));
+      e.currentTarget.reset();
     } catch {
-      setError(
-        `서버에 연결할 수 없습니다. 백엔드(${apiBaseUrl})가 실행 중인지 확인하세요.`,
-      );
+      setUi((prev) => ({
+        ...prev,
+        error: `서버에 연결할 수 없습니다. 백엔드(${apiBaseUrl})가 실행 중인지 확인하세요.`,
+      }));
     } finally {
-      setSubmitting(false);
+      setUi((prev) => ({ ...prev, submitting: false }));
     }
   };
 
@@ -92,7 +109,7 @@ export default function SignupPage() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <form onSubmit={handleSignup} className="space-y-4" noValidate>
         <div className="space-y-2">
           <Label htmlFor="signup-name">이름</Label>
           <Input
@@ -102,7 +119,7 @@ export default function SignupPage() {
             autoComplete="name"
             placeholder="홍길동"
             required
-            disabled={submitting}
+            disabled={ui.submitting}
           />
         </div>
         <div className="space-y-2">
@@ -114,7 +131,7 @@ export default function SignupPage() {
             autoComplete="email"
             placeholder="you@example.com"
             required
-            disabled={submitting}
+            disabled={ui.submitting}
           />
         </div>
         <div className="space-y-2">
@@ -127,7 +144,7 @@ export default function SignupPage() {
             placeholder="8자 이상"
             minLength={8}
             required
-            disabled={submitting}
+            disabled={ui.submitting}
           />
         </div>
         <div className="space-y-2">
@@ -135,7 +152,7 @@ export default function SignupPage() {
           <select
             id="signup-role"
             name="role"
-            disabled={submitting}
+            disabled={ui.submitting}
             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] dark:bg-input/30"
             defaultValue="user"
           >
@@ -153,16 +170,16 @@ export default function SignupPage() {
             placeholder="비밀번호 다시 입력"
             minLength={8}
             required
-            disabled={submitting}
+            disabled={ui.submitting}
           />
         </div>
 
-        {error && (
+        {ui.error && (
           <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {error}
+            {ui.error}
           </p>
         )}
-        {success && (
+        {ui.success && (
           <p
             className="text-sm text-green-600 dark:text-green-400"
             role="status"
@@ -173,11 +190,11 @@ export default function SignupPage() {
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={ui.submitting}
           className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 transition-colors disabled:opacity-50"
         >
           <UserPlus size={16} aria-hidden />
-          {submitting ? "전송 중…" : "회원가입"}
+          {ui.submitting ? "전송 중…" : "회원가입"}
         </button>
       </form>
     </AuthPageShell>

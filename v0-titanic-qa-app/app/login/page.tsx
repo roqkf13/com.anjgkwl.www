@@ -9,27 +9,47 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+type LoginUiState = {
+  error: string | null;
+  submitting: boolean;
+};
+
+const initialUiState: LoginUiState = {
+  error: null,
+  submitting: false,
+};
+
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [ui, setUi] = useState<LoginUiState>(initialUiState);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
+    const formProps = Object.fromEntries(
+      new FormData(e.currentTarget).entries(),
+    ) as Record<string, string>;
 
-    if (!email.trim() || !password) {
-      setError("이메일과 비밀번호를 입력해 주세요.");
+    const email = (formProps.email ?? "").trim();
+    const password = formProps.password ?? "";
+
+    setUi({ error: null, submitting: false });
+
+    if (!email || !password) {
+      setUi((prev) => ({
+        ...prev,
+        error: "이메일과 비밀번호를 입력해 주세요.",
+      }));
       return;
     }
 
-    setSubmitting(true);
+    setUi((prev) => ({ ...prev, submitting: true }));
     try {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      setError("백엔드 인증 API가 연결되면 로그인이 활성화됩니다.");
+      setUi((prev) => ({
+        ...prev,
+        error: "백엔드 인증 API가 연결되면 로그인이 활성화됩니다.",
+      }));
     } finally {
-      setSubmitting(false);
+      setUi((prev) => ({ ...prev, submitting: false }));
     }
   };
 
@@ -49,17 +69,17 @@ export default function LoginPage() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleLogin} className="space-y-4" noValidate>
         <div className="space-y-2">
           <Label htmlFor="login-email">이메일</Label>
           <Input
             id="login-email"
+            name="email"
             type="email"
             autoComplete="email"
             placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={submitting}
+            required
+            disabled={ui.submitting}
           />
         </div>
         <div className="space-y-2">
@@ -74,28 +94,28 @@ export default function LoginPage() {
           </div>
           <Input
             id="login-password"
+            name="password"
             type="password"
             autoComplete="current-password"
             placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={submitting}
+            required
+            disabled={ui.submitting}
           />
         </div>
 
-        {error && (
+        {ui.error && (
           <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {error}
+            {ui.error}
           </p>
         )}
 
         <Button
           type="submit"
           className="w-full bg-violet-600 hover:bg-violet-700 text-white"
-          disabled={submitting}
+          disabled={ui.submitting}
         >
           <LogIn size={16} aria-hidden />
-          {submitting ? "로그인 중…" : "로그인"}
+          {ui.submitting ? "로그인 중…" : "로그인"}
         </Button>
       </form>
     </AuthPageShell>

@@ -1,24 +1,9 @@
-"use client";
-
-import { Sparkles } from "lucide-react";
-import { GeminiChat } from "@/components/gemini-chat";
+import { ScoutZones } from "@/components/scout-zones";
 
 export default function HomePage() {
   return (
-    <main className="flex flex-1 flex-col min-h-0 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
-      <div className="max-w-lg mx-auto px-4 py-6 flex flex-col flex-1 min-h-0 w-full">
-        <header className="text-center mb-4">
-          <div className="inline-flex items-center justify-center gap-2 mb-1">
-            <Sparkles className="text-violet-500" size={28} aria-hidden />
-            <h2 className="text-2xl font-bold tracking-tight">Gemini 채팅</h2>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Google Gemini 와 대화합니다. API 키는 backend/.env 의 GEMINI_API_KEY 를 사용합니다.
-          </p>
-        </header>
-
-        <GeminiChat />
-      </div>
+    <main className="flex flex-1 flex-col min-h-0 bg-[radial-gradient(ellipse_at_center_bottom,_#dbeafe_0%,_#f8fafc_45%,_#ffffff_100%)] dark:bg-[radial-gradient(ellipse_at_center_bottom,_#1e293b_0%,_#0f172a_55%,_#020617_100%)]">
+      <ScoutZones />
     </main>
   );
 }
