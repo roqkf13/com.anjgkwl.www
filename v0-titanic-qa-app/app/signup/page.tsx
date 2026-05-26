@@ -38,7 +38,7 @@ export default function SignupPage() {
     const email = (formProps.email ?? "").trim();
     const password = formProps.password ?? "";
     const passwordConfirm = formProps.passwordConfirm ?? "";
-    const role = formProps.role ?? "user";
+    const role = "user";
 
     setUi({ error: null, success: false, submitting: false });
 
@@ -146,19 +146,6 @@ export default function SignupPage() {
             required
             disabled={ui.submitting}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="signup-role">역할</Label>
-          <select
-            id="signup-role"
-            name="role"
-            disabled={ui.submitting}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] dark:bg-input/30"
-            defaultValue="user"
-          >
-            <option value="user">일반유저</option>
-            <option value="admin">관리자</option>
-          </select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="signup-password-confirm">비밀번호 확인</Label>
