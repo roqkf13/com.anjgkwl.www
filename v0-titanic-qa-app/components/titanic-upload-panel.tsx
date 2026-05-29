@@ -1,14 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useRef, useState, type DragEvent, type ChangeEvent } from "react";
 import { Upload, FolderOpen, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-
-function isTitanicCsv(file: File): boolean {
-  return file.name.toLowerCase() === "titanic.csv";
-}
 
 type Feedback = {
   kind: "success" | "error" | "info";
@@ -19,6 +15,11 @@ type UploadUiState = {
   dragOver: boolean;
   uploading: boolean;
   feedback: Feedback | null;
+};
+
+type UploadResponse = {
+  count: number;
+  records: Array<Record<string, unknown>>;
 };
 
 const initialUploadUi: UploadUiState = {
@@ -43,17 +44,6 @@ export function TitanicUploadPanel() {
       setUi((prev) => ({
         ...prev,
         feedback: { kind: "error", text: "CSV 파일만 선택할 수 있습니다." },
-      }));
-      return;
-    }
-    if (!isTitanicCsv(f)) {
-      setFile(null);
-      setUi((prev) => ({
-        ...prev,
-        feedback: {
-          kind: "error",
-          text: "파일 이름은 titanic.csv 여야 합니다.",
-        },
       }));
       return;
     }
@@ -98,7 +88,7 @@ export function TitanicUploadPanel() {
     body.append("file", file);
 
     try {
-      const res = await fetch(`${apiBaseUrl}/titanic/upload`, {
+      const res = await fetch(`${apiBaseUrl}/titanic/james/upload`, {
         method: "POST",
         body,
       });
@@ -106,9 +96,13 @@ export function TitanicUploadPanel() {
         const msg = await res.text().catch(() => "");
         throw new Error(msg || `HTTP ${res.status}`);
       }
+      const data = (await res.json()) as UploadResponse;
       setUi((prev) => ({
         ...prev,
-        feedback: { kind: "success", text: "서버에 업로드되었습니다." },
+        feedback: {
+          kind: "success",
+          text: `서버에 업로드되었습니다. (${data.count}건, Sex→gender 변환 완료)`,
+        },
       }));
       setFile(null);
     } catch {
@@ -116,7 +110,7 @@ export function TitanicUploadPanel() {
         ...prev,
         feedback: {
           kind: "error",
-          text: "서버 업로드에 실패했습니다. 백엔드에 POST /titanic/upload 를 연결하면 전송됩니다.",
+          text: "서버 업로드에 실패했습니다. 백엔드 POST /titanic/james/upload 로 전송됩니다.",
         },
       }));
     } finally {
@@ -130,7 +124,7 @@ export function TitanicUploadPanel() {
         타이타닉 홈
       </h1>
       <p className="text-sm text-gray-500 text-center mb-10 max-w-md">
-        titanic.csv 파일만 업로드할 수 있습니다. 아래 영역에 놓거나, 버튼으로 선택한 뒤 업로드하세요.
+        CSV 파일만 업로드할 수 있습니다. 아래 영역에 놓거나, 버튼으로 선택한 뒤 업로드하세요.
       </p>
 
       <input
@@ -145,7 +139,7 @@ export function TitanicUploadPanel() {
       <div
         role="button"
         tabIndex={0}
-        aria-label="titanic.csv 파일을 끌어다 놓거나 클릭하여 선택"
+        aria-label="CSV 파일을 끌어다 놓거나 클릭하여 선택"
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -171,7 +165,7 @@ export function TitanicUploadPanel() {
         />
         <p className="text-base font-medium text-gray-800 mb-1">업로드 창</p>
         <p className="text-sm text-gray-500">
-          titanic.csv 를 여기에 끌어다 놓거나, 이 영역을 클릭해 선택하세요.
+          CSV 파일을 여기에 끌어다 놓거나, 이 영역을 클릭해 선택하세요.
         </p>
       </div>
 
@@ -235,3 +229,4 @@ export function TitanicUploadPanel() {
     </>
   );
 }
+
