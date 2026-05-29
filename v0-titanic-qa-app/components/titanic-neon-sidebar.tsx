@@ -45,7 +45,8 @@ export function TitanicNeonSidebar({ rows, count, error }: TitanicNeonSidebarPro
                       {String(item.Name ?? "(이름 없음)")}
                     </p>
                     <p className="text-gray-500 dark:text-gray-400">
-                      ID {String(item.PassengerId ?? "-")} / Sex {String(item.Sex ?? "-")} / Survived{" "}
+                      ID {String(item.PassengerId ?? "-")} / gender{" "}
+                      {String(item.gender ?? "-")} / Survived{" "}
                       {String(item.Survived ?? "-")}
                     </p>
                   </li>

@@ -65,7 +65,7 @@ export default async function TitanicNeonPage() {
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">PassengerId</th>
                     <th className="px-3 py-2 text-left font-medium">Name</th>
-                    <th className="px-3 py-2 text-left font-medium">Sex</th>
+                    <th className="px-3 py-2 text-left font-medium">gender</th>
                     <th className="px-3 py-2 text-left font-medium">Survived</th>
                     <th className="px-3 py-2 text-left font-medium">Pclass</th>
                   </tr>
@@ -82,7 +82,7 @@ export default async function TitanicNeonPage() {
                       <tr key={`${String(row.PassengerId ?? index)}-${index}`} className="border-t border-gray-200 dark:border-gray-800">
                         <td className="px-3 py-2">{String(row.PassengerId ?? "-")}</td>
                         <td className="px-3 py-2">{String(row.Name ?? "-")}</td>
-                        <td className="px-3 py-2">{String(row.Sex ?? "-")}</td>
+                        <td className="px-3 py-2">{String(row.gender ?? "-")}</td>
                         <td className="px-3 py-2">{String(row.Survived ?? "-")}</td>
                         <td className="px-3 py-2">{String(row.Pclass ?? "-")}</td>
                       </tr>
