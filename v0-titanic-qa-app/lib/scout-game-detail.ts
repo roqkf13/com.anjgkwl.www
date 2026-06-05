@@ -1,9 +1,17 @@
+export type ScoutPatchContentBlock = {
+  type: "text" | "image";
+  text?: string | null;
+  url?: string | null;
+};
+
 export type ScoutPatchNote = {
   id: string;
   title: string;
   publishedAt: string;
   summary: string;
   bodyKo: string;
+  imageUrls?: string[];
+  contentBlocks?: ScoutPatchContentBlock[];
   sourceUrl?: string;
 };
 
@@ -36,7 +44,7 @@ export type ScoutGameDetail = {
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
-const PATCH_CACHE_VERSION = "v2";
+const PATCH_CACHE_VERSION = "v5";
 
 export function patchNotesStorageKey(steamAppId: number): string {
   return `scout-patch-notes-${PATCH_CACHE_VERSION}-${steamAppId}`;
@@ -54,6 +62,29 @@ export function isKoreanPatchNote(note: ScoutPatchNote): boolean {
 /** 모달에 쓸 만한 전체 본문이 있는지 */
 export function hasFullPatchBody(note: ScoutPatchNote): boolean {
   return isKoreanPatchNote(note) && note.bodyKo.trim().length > 250;
+}
+
+/** contentBlocks 텍스트가 한국어인지 */
+export function hasKoreanPatchBlocks(note: ScoutPatchNote): boolean {
+  return (note.contentBlocks ?? []).some(
+    (b) => b.type === "text" && !!b.text && /[\uac00-\ud7a3]/.test(b.text),
+  );
+}
+
+/** 모달에 바로 표시할 한글 본문·블록이 준비됐는지 */
+export function isPatchNoteReady(note: ScoutPatchNote): boolean {
+  const blocks = note.contentBlocks ?? [];
+  if (!hasKoreanPatchBlocks(note)) {
+    return hasFullPatchBody(note) && blocks.length === 0;
+  }
+  const hasImages = blocks.some((b) => b.type === "image");
+  const koreanTextCount = blocks.filter(
+    (b) => b.type === "text" && b.text && /[\uac00-\ud7a3]/.test(b.text),
+  ).length;
+  if (note.id.includes("-steam-") && hasImages && koreanTextCount < 2) {
+    return false;
+  }
+  return true;
 }
 
 /** 브라우저에 저장된 한글 패치와 서버 응답 병합 */
@@ -77,8 +108,17 @@ export function mergePatchNotesWithCache(
     const byId = new Map(cached.map((n) => [n.id, n]));
     return serverNotes.map((note) => {
       const hit = byId.get(note.id);
-      if (hit?.id === note.id && hasFullPatchBody(hit)) {
-        return { ...note, ...hit };
+      if (hit?.id === note.id && (hasFullPatchBody(hit) || hasKoreanPatchBlocks(hit))) {
+        return {
+          ...note,
+          ...hit,
+          imageUrls: note.imageUrls?.length ? note.imageUrls : hit.imageUrls,
+          contentBlocks: hasKoreanPatchBlocks(hit)
+            ? hit.contentBlocks
+            : hasKoreanPatchBlocks(note)
+              ? note.contentBlocks
+              : hit.contentBlocks ?? note.contentBlocks,
+        };
       }
       if (hasFullPatchBody(note) || isKoreanPatchNote(note)) return note;
       return note;
@@ -108,9 +148,13 @@ export function savePatchNotesToCache(
 
 /** Steam 패치는 본문 번역 전 bodyKo 가 비어 있어야 함 */
 export function needsPatchNoteTranslation(note: ScoutPatchNote): boolean {
+  if (isPatchNoteReady(note)) return false;
   const body = note.bodyKo.trim();
   if (!body) return true;
   if (note.id.includes("-steam-") && !/[\uac00-\ud7a3]/.test(body)) {
+    return true;
+  }
+  if ((note.contentBlocks?.length ?? 0) > 0 && !hasKoreanPatchBlocks(note)) {
     return true;
   }
   return false;
@@ -133,6 +177,8 @@ export async function fetchPatchNoteKorean(
     return {
       ...data,
       bodyKo: data.bodyKo?.trim() ?? "",
+      imageUrls: data.imageUrls ?? [],
+      contentBlocks: data.contentBlocks ?? [],
     };
   } catch {
     return null;
@@ -162,6 +208,8 @@ export async function fetchScoutGameDetail(
       patchNotes: data.patchNotes.map((note) => ({
         ...note,
         bodyKo: note.bodyKo?.trim() ?? "",
+        imageUrls: note.imageUrls ?? [],
+        contentBlocks: note.contentBlocks ?? [],
       })),
     };
   } catch {

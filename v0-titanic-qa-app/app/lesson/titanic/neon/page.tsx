@@ -12,6 +12,7 @@ export default async function TitanicNeonPage() {
     const [dataRes, countRes] = await Promise.all([
       fetch(`${apiBaseUrl}/titanic/data`, { cache: "no-store" }),
       fetch(`${apiBaseUrl}/titanic/count`, { cache: "no-store" }),
+      fetch(`${apiBaseUrl}/titanic/walter/myself`, { cache: "no-store" }),
     ]);
 
     if (!dataRes.ok) {
@@ -39,8 +40,9 @@ export default async function TitanicNeonPage() {
           Neon 업로드 데이터
         </h1>
         <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
-          <code className="text-xs">GET /titanic/data</code>와{" "}
-          <code className="text-xs">GET /titanic/count</code> 응답을 표시합니다.
+          <code className="text-xs">GET /titanic/data</code>,{" "}
+          <code className="text-xs">GET /titanic/count</code>,{" "}
+          <code className="text-xs">GET /titanic/walter/myself</code> 응답을 표시합니다.
         </p>
 
         {error ? (

@@ -18,6 +18,7 @@ import {
   fetchPatchNoteKorean,
   fetchScoutGameDetail,
   hasFullPatchBody,
+  isPatchNoteReady,
   mergePatchNotesWithCache,
   needsPatchNoteTranslation,
   savePatchNotesToCache,
@@ -118,12 +119,12 @@ export function ScoutGameDetailView({
     setOpenNote(current);
     setDetailError(false);
 
-    if (hasFullPatchBody(current)) return;
+    if (isPatchNoteReady(current)) return;
 
     setLoadingDetail(true);
     try {
       const full = await fetchPatchNoteKorean(steamAppId, note.id);
-      if (full && hasFullPatchBody(full)) {
+      if (full && (isPatchNoteReady(full) || hasFullPatchBody(full))) {
         setOpenNote(full);
         updateNoteInList(full);
       } else {
