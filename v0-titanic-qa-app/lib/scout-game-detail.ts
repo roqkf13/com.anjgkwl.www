@@ -15,13 +15,91 @@ export type ScoutPatchNote = {
   sourceUrl?: string;
 };
 
+export type ScoutModKind = "appearance" | "functional";
+export type ScoutModSource = "nexus" | "workshop" | "curated" | "github";
+
+export type ModCharacterSlug =
+  | "regent"
+  | "silent"
+  | "ironclad"
+  | "defect"
+  | "necrobinder"
+  | "other";
+
+export const MOD_CHARACTER_LABELS: Record<ModCharacterSlug, string> = {
+  regent: "리젠트",
+  silent: "사일런트",
+  ironclad: "아이언클래드",
+  defect: "디펙트",
+  necrobinder: "네크로바인더",
+  other: "기타",
+};
+
+export const MOD_CHARACTER_ORDER: ModCharacterSlug[] = [
+  "regent",
+  "silent",
+  "ironclad",
+  "defect",
+  "necrobinder",
+  "other",
+];
+
 export type ScoutMod = {
   id: string;
+  modKind: ScoutModKind;
   name: string;
   author: string;
   summary: string;
+  characters?: ModCharacterSlug[];
+  source?: ScoutModSource;
   sourceUrl?: string;
 };
+
+export type ModCharacterGroup = {
+  slug: ModCharacterSlug;
+  label: string;
+  mods: ScoutMod[];
+};
+
+export function groupModsByCharacter(mods: ScoutMod[]): ModCharacterGroup[] {
+  const buckets = new Map<ModCharacterSlug, ScoutMod[]>();
+
+  for (const mod of mods) {
+    const slugs =
+      mod.characters && mod.characters.length > 0
+        ? mod.characters
+        : (["other"] as ModCharacterSlug[]);
+    for (const slug of slugs) {
+      const key = (MOD_CHARACTER_LABELS[slug as ModCharacterSlug]
+        ? slug
+        : "other") as ModCharacterSlug;
+      const list = buckets.get(key) ?? [];
+      list.push(mod);
+      buckets.set(key, list);
+    }
+  }
+
+  return MOD_CHARACTER_ORDER.filter((slug) => buckets.has(slug)).map((slug) => ({
+    slug,
+    label: MOD_CHARACTER_LABELS[slug],
+    mods: buckets.get(slug) ?? [],
+  }));
+}
+
+export function modSourceLinkLabel(source?: ScoutModSource): string {
+  switch (source) {
+    case "nexus":
+      return "Nexus Mods에서 보기";
+    case "workshop":
+      return "Steam Workshop에서 보기";
+    case "github":
+      return "GitHub에서 보기";
+    case "curated":
+      return "제작자 페이지에서 보기";
+    default:
+      return "모드 페이지에서 보기";
+  }
+}
 
 export type ScoutRelatedVideo = {
   id: string;
@@ -37,7 +115,8 @@ export type ScoutGameDetail = {
   steamStoreUrl: string;
   officialSiteUrl: string;
   patchNotes: ScoutPatchNote[];
-  mods: ScoutMod[];
+  appearanceMods: ScoutMod[];
+  functionalMods: ScoutMod[];
   videos: ScoutRelatedVideo[];
 };
 
@@ -254,12 +333,27 @@ export function getScoutGameDetailPlaceholder(
         sourceUrl: `${steamStoreUrl}/news/`,
       },
     ],
-    mods: [
+    appearanceMods: [
       {
-        id: `${steamAppId}-mod-1`,
-        name: "커뮤니티 모드 예시",
+        id: `${steamAppId}-mod-appearance-1`,
+        modKind: "appearance",
+        name: "외형 모드 예시",
         author: "Community",
-        summary: "Steam Workshop·Nexus 등 모드 목록이 이 영역에 표시됩니다.",
+        summary: "캐릭터 스킨·카드 아트 등 외형 변경 모드가 이 영역에 표시됩니다.",
+        characters: ["regent"],
+        source: "curated",
+        sourceUrl: steamStoreUrl,
+      },
+    ],
+    functionalMods: [
+      {
+        id: `${steamAppId}-mod-functional-1`,
+        modKind: "functional",
+        name: "기능 모드 예시",
+        author: "Community",
+        summary: "새 캐릭터·밸런스·QoL 등 플레이 변경 모드가 이 영역에 표시됩니다.",
+        source: "curated",
+        sourceUrl: steamStoreUrl,
       },
     ],
     videos: [

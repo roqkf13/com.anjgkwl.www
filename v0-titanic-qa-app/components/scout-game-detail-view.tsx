@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ChevronRight,
@@ -9,6 +9,8 @@ import {
   FileText,
   Loader2,
   Puzzle,
+  Shirt,
+  Wrench,
   Youtube,
 } from "lucide-react";
 
@@ -23,6 +25,10 @@ import {
   needsPatchNoteTranslation,
   savePatchNotesToCache,
   type ScoutGameDetail,
+  groupModsByCharacter,
+  modSourceLinkLabel,
+  type ModCharacterSlug,
+  type ScoutMod,
   type ScoutPatchNote,
 } from "@/lib/scout-game-detail";
 
@@ -31,6 +37,159 @@ type ScoutGameDetailViewProps = {
   steamAppId: number;
   initialTitle: string;
 };
+
+function ModCard({ mod }: { mod: ScoutMod }) {
+  return (
+    <li className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+      {mod.sourceUrl ? (
+        <a
+          href={mod.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-violet-700 dark:text-violet-300 hover:underline"
+        >
+          {mod.name}
+        </a>
+      ) : (
+        <h4 className="font-medium">{mod.name}</h4>
+      )}
+      <p className="text-xs text-gray-500 mt-0.5">{mod.author}</p>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{mod.summary}</p>
+      {mod.sourceUrl && (
+        <a
+          href={mod.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400 hover:underline"
+        >
+          {modSourceLinkLabel(mod.source)}
+          <span aria-hidden>↗</span>
+        </a>
+      )}
+    </li>
+  );
+}
+
+function ModList({ mods }: { mods: ScoutMod[] }) {
+  return (
+    <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {mods.map((mod) => (
+        <ModCard key={mod.id} mod={mod} />
+      ))}
+    </ul>
+  );
+}
+
+function ModSubsection({
+  id,
+  title,
+  icon,
+  mods,
+  emptyMessage,
+}: {
+  id: string;
+  title: string;
+  icon: ReactNode;
+  mods: ScoutMod[];
+  emptyMessage: string;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        {icon}
+        <h3 id={id} className="text-base font-semibold">
+          {title}
+        </h3>
+      </div>
+      {mods.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</p>
+      ) : (
+        <ModList mods={mods} />
+      )}
+    </div>
+  );
+}
+
+function AppearanceModsByCharacter({
+  mods,
+  emptyMessage,
+}: {
+  mods: ScoutMod[];
+  emptyMessage: string;
+}) {
+  const groups = groupModsByCharacter(mods);
+  const [activeCharacter, setActiveCharacter] = useState<ModCharacterSlug | "all">(
+    "all",
+  );
+
+  if (mods.length === 0) {
+    return (
+      <p className="text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</p>
+    );
+  }
+
+  const visibleGroups =
+    activeCharacter === "all"
+      ? groups
+      : groups.filter((group) => group.slug === activeCharacter);
+
+  return (
+    <div className="space-y-4">
+      <div
+        className="flex flex-wrap gap-2"
+        role="tablist"
+        aria-label="캐릭터별 외형 모드"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeCharacter === "all"}
+          onClick={() => setActiveCharacter("all")}
+          className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+            activeCharacter === "all"
+              ? "bg-violet-600 text-white"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          }`}
+        >
+          전체
+        </button>
+        {groups.map((group) => (
+          <button
+            key={group.slug}
+            type="button"
+            role="tab"
+            aria-selected={activeCharacter === group.slug}
+            onClick={() => setActiveCharacter(group.slug)}
+            className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+              activeCharacter === group.slug
+                ? "bg-violet-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            }`}
+          >
+            {group.label}
+            <span className="ml-1 opacity-80">({group.mods.length})</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-6">
+        {visibleGroups.map((group) => (
+          <div key={group.slug}>
+            {activeCharacter === "all" && (
+              <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                {group.label}
+                <span className="ml-1 font-normal text-gray-500">
+                  ({group.mods.length})
+                </span>
+              </h4>
+            )}
+            <ModList mods={group.mods} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function ScoutGameDetailView({
   genreId,
@@ -255,37 +414,33 @@ export function ScoutGameDetailView({
 
           {detail && (
             <>
-              <section aria-labelledby="mods-heading">
-                <div className="flex items-center gap-2 mb-4">
+              <section aria-labelledby="mods-heading" className="space-y-8">
+                <div className="flex items-center gap-2">
                   <Puzzle size={20} className="text-violet-600" aria-hidden />
                   <h2 id="mods-heading" className="text-lg font-semibold">
                     모드
                   </h2>
                 </div>
-                <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {detail.mods.map((mod) => (
-                    <li
-                      key={mod.id}
-                      className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4"
-                    >
-                      <h3 className="font-medium">{mod.name}</h3>
-                      <p className="text-xs text-gray-500 mt-0.5">{mod.author}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        {mod.summary}
-                      </p>
-                      {mod.sourceUrl && (
-                        <a
-                          href={mod.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-2 inline-block text-xs text-violet-600 dark:text-violet-400 hover:underline"
-                        >
-                          모드 페이지
-                        </a>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shirt size={18} className="text-pink-600" aria-hidden />
+                    <h3 id="appearance-mods-heading" className="text-base font-semibold">
+                      외형 모드
+                    </h3>
+                  </div>
+                  <AppearanceModsByCharacter
+                    mods={detail.appearanceMods}
+                    emptyMessage="등록된 외형 모드가 없습니다."
+                  />
+                </div>
+                <ModSubsection
+                  id="functional-mods-heading"
+                  title="기능 모드"
+                  icon={<Wrench size={18} className="text-amber-600" aria-hidden />}
+                  mods={detail.functionalMods}
+                  emptyMessage="등록된 기능 모드가 없습니다."
+                />
               </section>
 
               <section aria-labelledby="videos-heading">
