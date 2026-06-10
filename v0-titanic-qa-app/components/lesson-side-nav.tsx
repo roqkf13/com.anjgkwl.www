@@ -14,6 +14,7 @@ const lessonNavSections = [
       { href: "/lesson/titanic/upload", label: "1. 데이터 수집" },
       { href: "/lesson/titanic/model", label: "2. 모델 분석" },
       { href: "/lesson/titanic/neon", label: "3. 구현 데이터 보기" },
+      { href: "/lesson/titanic/smith", label: "4. 스미스 선장과 대화" },
     ],
   },
 ] as const;
