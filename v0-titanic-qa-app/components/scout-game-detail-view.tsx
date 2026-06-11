@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
+  ChevronDown,
   ChevronRight,
   ExternalLink,
   FileText,
@@ -54,7 +55,9 @@ function ModCard({ mod }: { mod: ScoutMod }) {
         <h4 className="font-medium">{mod.name}</h4>
       )}
       <p className="text-xs text-gray-500 mt-0.5">{mod.author}</p>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{mod.summary}</p>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">
+        {mod.summary}
+      </p>
       {mod.sourceUrl && (
         <a
           href={mod.sourceUrl}
@@ -121,6 +124,21 @@ function AppearanceModsByCharacter({
   const [activeCharacter, setActiveCharacter] = useState<ModCharacterSlug | "all">(
     "all",
   );
+  const [expandedSections, setExpandedSections] = useState<
+    Set<ModCharacterSlug>
+  >(new Set());
+  const tabInitialized = useRef(false);
+
+  useEffect(() => {
+    tabInitialized.current = false;
+    setExpandedSections(new Set());
+  }, [mods]);
+
+  useEffect(() => {
+    if (tabInitialized.current || groups.length === 0) return;
+    tabInitialized.current = true;
+    setActiveCharacter(groups[0].slug);
+  }, [groups]);
 
   if (mods.length === 0) {
     return (
@@ -133,6 +151,25 @@ function AppearanceModsByCharacter({
       ? groups
       : groups.filter((group) => group.slug === activeCharacter);
 
+  function selectTab(next: ModCharacterSlug | "all") {
+    setActiveCharacter(next);
+    if (next === "all") {
+      setExpandedSections(new Set());
+    }
+  }
+
+  function toggleSection(slug: ModCharacterSlug) {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) {
+        next.delete(slug);
+      } else {
+        next.add(slug);
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div
@@ -144,7 +181,7 @@ function AppearanceModsByCharacter({
           type="button"
           role="tab"
           aria-selected={activeCharacter === "all"}
-          onClick={() => setActiveCharacter("all")}
+          onClick={() => selectTab("all")}
           className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
             activeCharacter === "all"
               ? "bg-violet-600 text-white"
@@ -159,7 +196,7 @@ function AppearanceModsByCharacter({
             type="button"
             role="tab"
             aria-selected={activeCharacter === group.slug}
-            onClick={() => setActiveCharacter(group.slug)}
+            onClick={() => selectTab(group.slug)}
             className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
               activeCharacter === group.slug
                 ? "bg-violet-600 text-white"
@@ -172,20 +209,57 @@ function AppearanceModsByCharacter({
         ))}
       </div>
 
-      <div className="space-y-6">
-        {visibleGroups.map((group) => (
-          <div key={group.slug}>
-            {activeCharacter === "all" && (
-              <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                {group.label}
-                <span className="ml-1 font-normal text-gray-500">
-                  ({group.mods.length})
-                </span>
-              </h4>
-            )}
-            <ModList mods={group.mods} />
-          </div>
-        ))}
+      {activeCharacter === "all" && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          전체 보기에서는 섹션을 접어 두었습니다. 펼치려면 제목을 누르거나 캐릭터
+          탭을 선택하세요.
+        </p>
+      )}
+
+      <div className="space-y-3">
+        {visibleGroups.map((group) => {
+          const isAllView = activeCharacter === "all";
+          const isExpanded = !isAllView || expandedSections.has(group.slug);
+
+          return (
+            <div
+              key={group.slug}
+              className={
+                isAllView
+                  ? "rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
+                  : undefined
+              }
+            >
+              {isAllView ? (
+                <button
+                  type="button"
+                  onClick={() => toggleSection(group.slug)}
+                  aria-expanded={isExpanded}
+                  className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+                >
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {group.label}
+                    <span className="ml-1 font-normal text-gray-500">
+                      ({group.mods.length})
+                    </span>
+                  </span>
+                  <ChevronDown
+                    size={18}
+                    className={`shrink-0 text-gray-400 transition-transform ${
+                      isExpanded ? "rotate-180" : ""
+                    }`}
+                    aria-hidden
+                  />
+                </button>
+              ) : null}
+              {isExpanded && (
+                <div className={isAllView ? "px-4 pb-4" : undefined}>
+                  <ModList mods={group.mods} />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -198,6 +272,7 @@ export function ScoutGameDetailView({
 }: ScoutGameDetailViewProps) {
   const [detail, setDetail] = useState<ScoutGameDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
+  const [detailLoadFailed, setDetailLoadFailed] = useState(false);
   const [patchNotes, setPatchNotes] = useState<ScoutPatchNote[]>([]);
   const [openNote, setOpenNote] = useState<ScoutPatchNote | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -216,21 +291,30 @@ export function ScoutGameDetailView({
     detail &&
     detail.steamStoreUrl !== detail.officialSiteUrl;
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadGameDetail = () => {
     setDetailLoading(true);
+    setDetailLoadFailed(false);
     fetchScoutGameDetail(steamAppId, initialTitle)
       .then((d) => {
-        if (cancelled) return;
+        const failed =
+          d.appearanceMods.length === 1 &&
+          d.appearanceMods[0]?.name === "외형 모드 예시";
+        if (failed) {
+          setDetail(null);
+          setPatchNotes([]);
+          setDetailLoadFailed(true);
+          return;
+        }
         setDetail(d);
         setPatchNotes(mergePatchNotesWithCache(steamAppId, d.patchNotes));
       })
       .finally(() => {
-        if (!cancelled) setDetailLoading(false);
+        setDetailLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+  };
+
+  useEffect(() => {
+    loadGameDetail();
   }, [steamAppId, initialTitle]);
 
   useEffect(() => {
@@ -372,7 +456,21 @@ export function ScoutGameDetailView({
             {detailLoading ? (
               <div className="flex items-center gap-2 text-sm text-gray-500 py-6">
                 <Loader2 size={18} className="animate-spin" aria-hidden />
-                패치 목록 불러오는 중…
+                패치·모드 불러오는 중…
+              </div>
+            ) : detailLoadFailed ? (
+              <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-4 text-sm">
+                <p className="text-amber-900 dark:text-amber-100">
+                  Scout API에 연결하지 못했습니다. 백엔드가 실행 중인지 확인해
+                  주세요.
+                </p>
+                <button
+                  type="button"
+                  onClick={loadGameDetail}
+                  className="mt-3 rounded-full bg-violet-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-violet-700 transition-colors"
+                >
+                  다시 시도
+                </button>
               </div>
             ) : (
               <ul className="space-y-3">
@@ -412,7 +510,7 @@ export function ScoutGameDetailView({
             )}
           </section>
 
-          {detail && (
+          {(detailLoading || detail) && !detailLoadFailed && (
             <>
               <section aria-labelledby="mods-heading" className="space-y-8">
                 <div className="flex items-center gap-2">
@@ -429,18 +527,34 @@ export function ScoutGameDetailView({
                       외형 모드
                     </h3>
                   </div>
-                  <AppearanceModsByCharacter
-                    mods={detail.appearanceMods}
-                    emptyMessage="등록된 외형 모드가 없습니다."
-                  />
+                  {detailLoading || !detail ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
+                      <Loader2 size={18} className="animate-spin" aria-hidden />
+                      외형 모드 불러오는 중…
+                    </div>
+                  ) : (
+                    <AppearanceModsByCharacter
+                      mods={detail.appearanceMods}
+                      emptyMessage="등록된 외형 모드가 없습니다."
+                    />
+                  )}
                 </div>
-                <ModSubsection
-                  id="functional-mods-heading"
-                  title="기능 모드"
-                  icon={<Wrench size={18} className="text-amber-600" aria-hidden />}
-                  mods={detail.functionalMods}
-                  emptyMessage="등록된 기능 모드가 없습니다."
-                />
+                {detailLoading || !detail ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
+                    <Loader2 size={18} className="animate-spin" aria-hidden />
+                    기능 모드 불러오는 중…
+                  </div>
+                ) : (
+                  <ModSubsection
+                    id="functional-mods-heading"
+                    title="기능 모드"
+                    icon={
+                      <Wrench size={18} className="text-amber-600" aria-hidden />
+                    }
+                    mods={detail.functionalMods}
+                    emptyMessage="등록된 기능 모드가 없습니다."
+                  />
+                )}
               </section>
 
               <section aria-labelledby="videos-heading">
@@ -450,6 +564,12 @@ export function ScoutGameDetailView({
                     관련 영상
                   </h2>
                 </div>
+                {detailLoading || !detail ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
+                    <Loader2 size={18} className="animate-spin" aria-hidden />
+                    관련 영상 불러오는 중…
+                  </div>
+                ) : (
                 <ul className="space-y-3">
                   {detail.videos.map((video) => (
                     <li
@@ -470,6 +590,7 @@ export function ScoutGameDetailView({
                     </li>
                   ))}
                 </ul>
+                )}
               </section>
             </>
           )}

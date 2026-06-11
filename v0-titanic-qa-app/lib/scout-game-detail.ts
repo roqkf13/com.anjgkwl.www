@@ -24,6 +24,7 @@ export type ModCharacterSlug =
   | "ironclad"
   | "defect"
   | "necrobinder"
+  | "collection"
   | "other";
 
 export const MOD_CHARACTER_LABELS: Record<ModCharacterSlug, string> = {
@@ -32,8 +33,18 @@ export const MOD_CHARACTER_LABELS: Record<ModCharacterSlug, string> = {
   ironclad: "아이언클래드",
   defect: "디펙트",
   necrobinder: "네크로바인더",
+  collection: "모음",
   other: "기타",
 };
+
+/** 플레이어블 로스터 — 2명 이상이면 모음 탭으로만 분류 */
+export const ROSTER_CHARACTER_SLUGS: ModCharacterSlug[] = [
+  "regent",
+  "silent",
+  "ironclad",
+  "defect",
+  "necrobinder",
+];
 
 export const MOD_CHARACTER_ORDER: ModCharacterSlug[] = [
   "regent",
@@ -41,6 +52,7 @@ export const MOD_CHARACTER_ORDER: ModCharacterSlug[] = [
   "ironclad",
   "defect",
   "necrobinder",
+  "collection",
   "other",
 ];
 
@@ -61,22 +73,28 @@ export type ModCharacterGroup = {
   mods: ScoutMod[];
 };
 
+export function modCharacterBucket(mod: ScoutMod): ModCharacterSlug {
+  const raw = mod.characters ?? [];
+  const roster = raw.filter((slug): slug is ModCharacterSlug =>
+    ROSTER_CHARACTER_SLUGS.includes(slug as ModCharacterSlug),
+  );
+  if (roster.length >= 2) {
+    return "collection";
+  }
+  if (roster.length === 1) {
+    return roster[0];
+  }
+  return "other";
+}
+
 export function groupModsByCharacter(mods: ScoutMod[]): ModCharacterGroup[] {
   const buckets = new Map<ModCharacterSlug, ScoutMod[]>();
 
   for (const mod of mods) {
-    const slugs =
-      mod.characters && mod.characters.length > 0
-        ? mod.characters
-        : (["other"] as ModCharacterSlug[]);
-    for (const slug of slugs) {
-      const key = (MOD_CHARACTER_LABELS[slug as ModCharacterSlug]
-        ? slug
-        : "other") as ModCharacterSlug;
-      const list = buckets.get(key) ?? [];
-      list.push(mod);
-      buckets.set(key, list);
-    }
+    const key = modCharacterBucket(mod);
+    const list = buckets.get(key) ?? [];
+    list.push(mod);
+    buckets.set(key, list);
   }
 
   return MOD_CHARACTER_ORDER.filter((slug) => buckets.has(slug)).map((slug) => ({
@@ -272,7 +290,7 @@ export async function fetchScoutGameDetail(
   title: string,
 ): Promise<ScoutGameDetail> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(() => controller.abort(), 12_000);
   try {
     const res = await fetch(
       `${apiBaseUrl}/scout/games/${steamAppId}/detail`,
