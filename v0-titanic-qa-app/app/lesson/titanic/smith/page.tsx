@@ -51,7 +51,7 @@ export default function SmithChatPage() {
     setInput("");
 
     try {
-      const res = await fetch(`${apiBaseUrl}/chat`, {
+      const res = await fetch(`${apiBaseUrl}/titanic/smith/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
