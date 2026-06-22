@@ -73,13 +73,47 @@ function ModCard({ mod }: { mod: ScoutMod }) {
   );
 }
 
+const MOD_PAGE_SIZE = 8;
+
 function ModList({ mods }: { mods: ScoutMod[] }) {
+  const [visible, setVisible] = useState(MOD_PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisible(MOD_PAGE_SIZE);
+  }, [mods]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible((v) => Math.min(v + MOD_PAGE_SIZE, mods.length));
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [mods]);
+
+  const shown = mods.slice(0, visible);
+  const remaining = mods.length - visible;
+
   return (
-    <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {mods.map((mod) => (
-        <ModCard key={mod.id} mod={mod} />
-      ))}
-    </ul>
+    <div className="space-y-3">
+      <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {shown.map((mod) => (
+          <ModCard key={mod.id} mod={mod} />
+        ))}
+      </ul>
+      {remaining > 0 && (
+        <div ref={sentinelRef} className="flex items-center justify-center py-3 text-xs text-gray-400 dark:text-gray-600">
+          스크롤하면 더 불러옵니다 ({remaining}개 남음)
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -473,35 +507,29 @@ export function ScoutGameDetailView({
                 </button>
               </div>
             ) : (
-              <ul className="space-y-3">
+              <ul className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
                 {patchNotes.map((note) => (
-                  <li key={note.id}>
+                  <li key={note.id} className="shrink-0 w-64 snap-start">
                     <button
                       type="button"
                       onClick={() => openPatchNote(note)}
-                      className="w-full text-left rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
+                      className="w-full h-full text-left rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 flex flex-col"
                     >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                          {note.title}
-                        </h3>
-                        <ChevronRight
-                          size={18}
-                          className="shrink-0 text-gray-400 mt-0.5"
-                          aria-hidden
-                        />
-                      </div>
                       <time
                         dateTime={note.publishedAt}
                         className="text-xs text-gray-500"
                       >
                         {note.publishedAt}
                       </time>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">
+                      <h3 className="font-medium text-gray-900 dark:text-gray-100 mt-1 line-clamp-2 flex-1">
+                        {note.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-3">
                         {note.summary}
                       </p>
-                      <span className="mt-2 inline-block text-xs font-medium text-violet-600 dark:text-violet-400">
+                      <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400">
                         한글 전문 보기
+                        <ChevronRight size={12} aria-hidden />
                       </span>
                     </button>
                   </li>
