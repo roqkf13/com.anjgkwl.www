@@ -86,7 +86,7 @@ export default function SignupPage() {
     } catch {
       setUi((prev) => ({
         ...prev,
-        error: `서버에 연결할 수 없습니다. 백엔드(${apiBaseUrl})가 실행 중인지 확인해주세요.`,
+        error: `서버에 연결할 수 없습니다. 백엔드(${apiBaseUrl})가 실행 중인지 확인하세요.`,
       }));
     } finally {
       setUi((prev) => ({ ...prev, submitting: false }));
