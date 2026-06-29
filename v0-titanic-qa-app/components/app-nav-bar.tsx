@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LogIn, Settings, Sparkles, UserPlus, Menu, X } from "lucide-react";
+import { LogIn, Mail, Settings, Sparkles, UserPlus, Menu, X } from "lucide-react";
 import { DarkModeToggle } from "@/components/dark-mode-toggle";
 
 export function AppNavBar() {
@@ -28,6 +28,13 @@ export function AppNavBar() {
           >
             <Sparkles size={16} className="text-blue-500 dark:text-blue-600" aria-hidden="true" />
             Gemini
+          </Link>
+          <Link
+            href="/email"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+          >
+            <Mail size={16} aria-hidden="true" />
+            메일
           </Link>
           <Link
             href="/admin"
@@ -80,6 +87,14 @@ export function AppNavBar() {
           >
             <Sparkles size={16} className="text-blue-500 dark:text-blue-600" aria-hidden="true" />
             Gemini
+          </Link>
+          <Link
+            href="/email"
+            onClick={close}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+          >
+            <Mail size={16} aria-hidden="true" />
+            메일
           </Link>
           <Link
             href="/admin"
