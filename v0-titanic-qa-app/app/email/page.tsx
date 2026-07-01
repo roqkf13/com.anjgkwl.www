@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, type DragEvent, type ChangeEvent, type FormEvent } from "react";
-import { Mail, Loader2, CheckCircle, AlertCircle, BookUser, Upload, FolderOpen, CheckCircle2, X } from "lucide-react";
+import { Mail, Loader2, CheckCircle, AlertCircle, BookUser, Upload, FolderOpen, CheckCircle2, X, Inbox } from "lucide-react";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
-type Tab = "mail" | "contacts";
+type Tab = "mail" | "contacts" | "inbox";
 type SendStatus = { type: "idle" } | { type: "loading" } | { type: "success"; subject: string; to: string } | { type: "error"; message: string };
 type Feedback = { kind: "success" | "error" | "info"; text: string };
 
@@ -162,12 +162,15 @@ function ContactUploadModal({ onClose, onUploaded }: { onClose: () => void; onUp
 }
 
 type ContactItem = { first_name: string; last_name: string; nickname: string; e_mail_1_value: string; organization_name: string };
+type ReceivedEmail = { id: string; gmail_id: string; thread_id: string | null; from_: string | null; to: string | null; subject: string | null; snippet: string | null };
 
 // ────────── 메인 페이지 ──────────
 export default function EmailPage() {
   const [tab, setTab] = useState<Tab>("mail");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [contacts, setContacts] = useState<ContactItem[]>([]);
+  const [receivedEmails, setReceivedEmails] = useState<ReceivedEmail[]>([]);
+  const [inboxLoading, setInboxLoading] = useState(false);
 
   const fetchContacts = useCallback(async () => {
     const res = await fetch(`${apiBaseUrl}/sherlock-homes/watson/contacts`);
@@ -176,9 +179,22 @@ export default function EmailPage() {
     setContacts(data.contacts ?? []);
   }, []);
 
+  const fetchReceivedEmails = useCallback(async () => {
+    setInboxLoading(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/sherlock-homes/watson/emails`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setReceivedEmails(data.emails ?? []);
+    } finally {
+      setInboxLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (tab === "contacts") fetchContacts();
-  }, [tab, fetchContacts]);
+    if (tab === "inbox") fetchReceivedEmails();
+  }, [tab, fetchContacts, fetchReceivedEmails]);
 
   // 메일 발송 폼 상태
   const [to, setTo] = useState("");
@@ -236,6 +252,18 @@ export default function EmailPage() {
           >
             <BookUser size={16} />
             주소록
+          </button>
+          <button
+            onClick={() => setTab("inbox")}
+            className={[
+              "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left",
+              tab === "inbox"
+                ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
+            ].join(" ")}
+          >
+            <Inbox size={16} />
+            받은 메일함
           </button>
         </nav>
       </aside>
@@ -351,6 +379,65 @@ export default function EmailPage() {
                           {[c.first_name, c.last_name].filter(Boolean).join(" ") || c.nickname || "-"}
                         </td>
                         <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{c.e_mail_1_value || "-"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {tab === "inbox" && (
+          <div className="flex flex-col flex-1 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Inbox size={22} className="text-blue-500" />
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">받은 메일함</h1>
+              </div>
+              <button
+                onClick={fetchReceivedEmails}
+                disabled={inboxLoading}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+              >
+                {inboxLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                새로고침
+              </button>
+            </div>
+
+            <div className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide w-48">발신자</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide w-56">제목</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">내용 미리보기</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inboxLoading ? (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-12 text-center text-sm text-gray-400">
+                        <Loader2 size={20} className="animate-spin mx-auto" />
+                      </td>
+                    </tr>
+                  ) : receivedEmails.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-12 text-center text-sm text-gray-400 dark:text-gray-500">
+                        받은 메일이 없습니다.
+                      </td>
+                    </tr>
+                  ) : (
+                    receivedEmails.map((email) => (
+                      <tr key={email.id} className="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                        <td className="px-4 py-3 text-gray-900 dark:text-gray-100 truncate max-w-0 w-48">
+                          <span className="block truncate">{email.from_ ?? "-"}</span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 dark:text-gray-100 truncate max-w-0 w-56">
+                          <span className="block truncate font-medium">{email.subject ?? "(제목 없음)"}</span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-0">
+                          <span className="block truncate">{email.snippet ?? ""}</span>
+                        </td>
                       </tr>
                     ))
                   )}
